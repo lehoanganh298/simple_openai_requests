@@ -18,8 +18,8 @@ def make_openai_requests(
     use_batch: bool = False,
     use_cache: bool = True,
     generation_args: Dict[str, Any] = {},
-    cache_file: str = '~/.gpt_cache.json',
-    batch_dir: str = '~/.gpt_batch_requests',
+    cache_file: str = None,
+    batch_dir: str = None,
     batch_run_name: str = None,
     max_workers: int = 10, 
     max_retries: int = 10, 
@@ -29,7 +29,7 @@ def make_openai_requests(
     user_confirm: bool = True,
 ) -> List[Dict[str, Any]]:
     """
-    Make OpenAI API requests for list of conversations, with options for batching API 
+    Make OpenAI API requests for a list of conversations, with options for batching API 
     or parallel synchronous API, with or without caching.
 
     This function processes a list of conversations, sending them to the OpenAI API
@@ -49,8 +49,12 @@ def make_openai_requests(
         use_cache (bool, optional): If True, use caching to avoid redundant API calls. Default is True.
         generation_args (Dict[str, Any]): Additional arguments for the API call, such as
             max_tokens, temperature, etc. Default is empty.
-        cache_file (str, optional): Path to the cache file. Default is '~/.gpt_cache.json'.
-        batch_dir (str, optional): Directory for batch processing files. Default is '~/.gpt_batch_requests'.
+        cache_file (str, optional): Path to the cache file. If not set, it will check the 
+            environment variable SIMPLE_OPENAI_REQUESTS_CACHE_FILE. If that is also not set, 
+            it defaults to '~/.gpt_cache.json'.
+        batch_dir (str, optional): Directory for batch processing files. If not set, it will 
+            check the environment variable SIMPLE_OPENAI_REQUESTS_BATCH_DIR. If that is also 
+            not set, it defaults to '~/.gpt_batch_requests'.
         batch_run_name (str, optional): A unique identifier for the batch run. If not provided
             and use_batch is True, a UUID will be generated.
         max_workers (int, optional): Maximum number of worker threads for parallel processing. Default is 10.
@@ -86,6 +90,10 @@ def make_openai_requests(
         raise ValueError("Either api_key param or OPENAI_API_KEY environment variable need to be set")
     
     client = OpenAI(api_key=api_key)
+
+    # Set cache_file and batch_dir to environment variables if not provided
+    cache_file = cache_file or os.getenv('SIMPLE_OPENAI_REQUESTS_CACHE_FILE', os.path.expanduser('~/.gpt_cache.json'))
+    batch_dir = batch_dir or os.getenv('SIMPLE_OPENAI_REQUESTS_BATCH_DIR', os.path.expanduser('~/.gpt_batch_requests'))
 
     conversation_formated = reformat_conversations(conversations)
     if use_cache:

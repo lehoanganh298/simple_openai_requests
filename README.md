@@ -16,13 +16,15 @@ This script provides a simple interface for making OpenAI API requests with vari
 - `model`: OpenAI model to use (e.g., "gpt-3.5-turbo")
 - `use_batch`: Set to True for batch API, False for synchronous API
 - `use_cache`: Enable/disable caching
+- `api_key`: OpenAI API key (if not provided, it will be read from the environment variable `OPENAI_API_KEY`)
 
 ### Additional Options:
 
 - `generation_args`: Additional arguments for the API call (e.g., max_tokens, temperature)
-- `cache_file`: Path to the cache file (default: '~/.gpt_cache.json')
-- `batch_dir`: Directory for batch processing files (default: '~/.gpt_batch_requests')
+- `cache_file`: Path to the cache file (default: environment variable `SIMPLE_OPENAI_REQUESTS_CACHE_FILE` or default as `~/.gpt_cache.json`)
+- `batch_dir`: Directory for batch processing files (default: environment variable `SIMPLE_OPENAI_REQUESTS_BATCH_DIR` or default as `~/.gpt_batch_requests`)
 - `full_response`: Return full API response or just the message content
+- `user_confirm`: If True, prompts for user confirmation before making API requests
 
 ## Usage Examples:
 
