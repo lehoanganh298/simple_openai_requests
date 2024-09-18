@@ -23,6 +23,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         self.batch_dir = os.path.expanduser("~./gpt_batch_dir_test")  # Set batch_dir
         self.patcher = patch('builtins.input', return_value='y')
         self.mock_input = self.patcher.start()
+        self.status_check_interval = 1  # Set a short interval for testing
 
     def tearDown(self):
         self.patcher.stop()
@@ -53,7 +54,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
             use_batch=True,
             use_cache=False,
             batch_dir=self.batch_dir,
-            full_response=True
+            full_response=True,
+            status_check_interval=self.status_check_interval
         )
 
         self.assertEqual(len(results), len(self.conversations))
@@ -81,7 +83,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
             use_batch=True,
             use_cache=False,
             batch_dir=self.batch_dir,
-            full_response=False
+            full_response=False,
+            status_check_interval=self.status_check_interval
         )
 
         self.assertEqual(len(results), len(self.conversations))
@@ -148,7 +151,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
             use_cache=True,
             cache_file=cache_file_path,
             batch_dir=self.batch_dir,  # Set batch_dir for batch request
-            full_response=True
+            full_response=True,
+            status_check_interval=self.status_check_interval
         )
 
         self.assertEqual(len(results), len(self.conversations))
@@ -246,7 +250,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
             generation_args=self.generation_args,
             use_batch=True,
             use_cache=False,
-            batch_dir=self.batch_dir  # Set batch_dir for batch request
+            batch_dir=self.batch_dir,  # Set batch_dir for batch request
+            status_check_interval=self.status_check_interval
         )
 
         self.assertEqual(len(results), len(large_conversations))
@@ -331,7 +336,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
             use_batch=True,
             use_cache=False,
             batch_dir=self.batch_dir,  # Set batch_dir for batch request
-            full_response=True
+            full_response=True,
+            status_check_interval=self.status_check_interval
         )
 
         self._assert_valid_results(results, len(conversations))
@@ -410,7 +416,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
                 use_cache=True,
                 cache_file=cache_file_path,
                 batch_dir=self.batch_dir,  # Set batch_dir for batch request
-                full_response=True
+                full_response=True,
+                status_check_interval=self.status_check_interval
             )
 
             self._assert_valid_results(results1, len(conversations))
@@ -424,7 +431,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
                 use_cache=True,
                 cache_file=cache_file_path,
                 batch_dir=self.batch_dir,  # Set batch_dir for batch request
-                full_response=True
+                full_response=True,
+                status_check_interval=self.status_check_interval
             )
 
             self._assert_valid_results(results2, len(conversations))

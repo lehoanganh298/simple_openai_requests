@@ -24,6 +24,7 @@ def make_openai_requests(
     max_workers: int = 10, 
     max_retries: int = 10, 
     retry_delay: int = 30, 
+    status_check_interval: int = 60,
     full_response: bool = False,
     api_key = None,
     user_confirm: bool = True,
@@ -60,6 +61,7 @@ def make_openai_requests(
         max_workers (int, optional): Maximum number of worker threads for parallel processing. Default is 10.
         max_retries (int, optional): Maximum number of retries for failed API calls. Default is 10.
         retry_delay (int, optional): Delay in seconds between retries. Default is 30.
+        status_check_interval (int, optional): Interval in seconds between status checks for batch requests. Default is 60.
         full_response (bool, optional): If True, return the full response object. 
             If False, return only the message content if available. Default is False.
         api_key (str, optional): OpenAI API key. If not provided, it will be read from the OPENAI_API_KEY environment variable.
@@ -121,12 +123,24 @@ def make_openai_requests(
 
         if use_batch:
             batch_dir = os.path.expanduser(batch_dir)
-            uncached_results = make_batch_request_multiple_batches(client, uncached_conversations, model, batch_dir, batch_run_name)
+            uncached_results = make_batch_request_multiple_batches(
+                client, 
+                uncached_conversations, 
+                model, 
+                batch_dir, 
+                batch_run_name, 
+                status_check_interval
+            )
             
             if use_cache:
                 update_cache(uncached_results, cache, model, generation_args, cache_file)
         else:
-            uncached_results = make_parallel_sync_requests(client, uncached_conversations, model, generation_args, max_workers, max_retries, retry_delay, use_cache, cache, cache_file)
+            uncached_results = make_parallel_sync_requests(client, 
+                                                           uncached_conversations, 
+                                                           model, 
+                                                           generation_args, 
+                                                           max_workers, max_retries, retry_delay, 
+                                                           use_cache, cache, cache_file)
 
         for result in uncached_results:
             result['is_cached_response'] = False
@@ -217,6 +231,7 @@ if __name__ == "__main__":
         # use_batch=True,
         use_cache=False,
         max_workers=2,
+        status_check_interval=30,  # Example usage of the new parameter
     )
     
     for result in results:

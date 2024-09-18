@@ -7,7 +7,6 @@ from typing import List, Dict, Any, Tuple, Union
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-STATUS_CHECK_INTERVAL = 60
 MAX_REQUESTS_PER_BATCH = 50000
 MAX_BATCH_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
 
@@ -56,7 +55,7 @@ def process_batch_output(output_file: str, batch: List[Dict[str, Any]]) -> List[
 
     return list(results.values())
 
-def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name: str, batch_dir: str, batch_run_name: str, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name: str, batch_dir: str, batch_run_name: str, status_check_interval: int, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     batch_request_file = f"{batch_dir}/{batch_run_name}_batch_request.jsonl"
     create_batch_request_file(batch, model_name, batch_request_file, generation_args)
 
@@ -98,8 +97,7 @@ def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name
         else:
             logger.info(f"Batch status: {batch_status['status']}")
 
-        
-        time.sleep(STATUS_CHECK_INTERVAL)
+        time.sleep(status_check_interval)  # Use the status_check_interval parameter here
     if batch_in_progress:
         pbar.close()
 
@@ -113,7 +111,7 @@ def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name
 
     return process_batch_output(batch_output_file, batch)
 
-def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, status_check_interval: int, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     """
     Make a OpenAI batch requests for a list of conversations, retrieve and return the responses
 
@@ -127,6 +125,7 @@ def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, 
         model_name (str): The name of the OpenAI model to use.
         batch_dir (str): The directory to store batch-related files.
         batch_run_name (str): A unique name for this batch run.
+        status_check_interval (int): Interval in seconds between status checks.
         generation_args (Dict[str, Any], optional): Additional arguments for text generation. Defaults to {}.
 
     Returns:
@@ -161,7 +160,7 @@ def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, 
 
     # If we're here, it means we're within limits, so we can process the single batch
     batch = conversations
-    results = process_single_batch(client, batch, model_name, batch_dir, batch_run_name, generation_args)
+    results = process_single_batch(client, batch, model_name, batch_dir, batch_run_name, status_check_interval, generation_args)
 
     return results
 
@@ -169,7 +168,7 @@ def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, 
 ##############################################################################
 # Multiple batch requests
 
-def submit_and_process_batch(client: OpenAI, batch_file: str, batch_num: int) -> List[Dict[str, Any]]:
+def submit_and_process_batch(client: OpenAI, batch_file: str, batch_num: int, status_check_interval: int) -> List[Dict[str, Any]]:
     with open(batch_file, 'rb') as f:
         file = client.files.create(file=f, purpose="batch")
 
@@ -197,7 +196,7 @@ def submit_and_process_batch(client: OpenAI, batch_file: str, batch_num: int) ->
             logger.error(f"Batch {batch_num} failed or expired. Status: {batch_status['status']}")
             return []
 
-        time.sleep(STATUS_CHECK_INTERVAL)
+        time.sleep(status_check_interval)
 
     output_file_content = client.files.content(batch_status['output_file_id'])
     batch_output_file = f"{os.path.dirname(batch_file)}/{os.path.basename(batch_file).replace('_request', '_output')}"
@@ -212,7 +211,7 @@ def submit_and_process_batch(client: OpenAI, batch_file: str, batch_num: int) ->
 
     return process_batch_output(batch_output_file, batch)
 
-def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, status_check_interval: int, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     """
     Make one or more OpenAI batch requests for a list of conversations, retrieve and return the responses
     (split into multiple batch if list of conversations too large for one batch file)
@@ -224,6 +223,7 @@ def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[Lis
         model_name (str): The name of the OpenAI model to use for processing.
         batch_dir (str): The directory where batch files will be stored.
         batch_run_name (str): A unique name for this batch run, used in file naming.
+        status_check_interval (int): Interval in seconds between status checks.
         generation_args (Dict[str, Any], optional): Additional arguments for the API call. Defaults to {}.
 
     Returns:
@@ -264,7 +264,7 @@ def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[Lis
 
     if len(batches) == 1:
         # Process single batch with progress bar
-        return process_single_batch(client, batches[0], model_name, batch_dir, batch_run_name, generation_args)
+        return process_single_batch(client, batches[0], model_name, batch_dir, batch_run_name, status_check_interval, generation_args)
     else:
         # Process multiple batches concurrently
         batch_files = []
@@ -275,7 +275,7 @@ def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[Lis
 
         all_results = []
         with ThreadPoolExecutor(max_workers=min(len(batch_files), 10)) as executor:
-            future_to_batch = {executor.submit(submit_and_process_batch, client, batch_file, i): i 
+            future_to_batch = {executor.submit(submit_and_process_batch, client, batch_file, i, status_check_interval): i 
                                for i, batch_file in enumerate(batch_files)}
             
             for future in tqdm(as_completed(future_to_batch), total=len(batch_files), desc="Processing batches"):
@@ -288,7 +288,7 @@ def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[Lis
                 #     logger.error(f"Batch {batch_num} generated an exception: {str(e)}")
 
         all_results.sort(key=lambda x: x['index'])
-        logger.info(f"Batch request completed with {len(uncached_results)} results")
+        logger.info(f"Batch request completed with {len(all_results)} results")
         
         return all_results
 

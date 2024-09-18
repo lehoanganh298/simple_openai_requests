@@ -16,6 +16,7 @@ class TestBatchRequests(unittest.TestCase):
         self.model_name = "gpt-3.5-turbo-0125"
         self.batch_dir = "batch_files"
         self.batch_run_name = "test_run"
+        self.status_check_interval = 1  # Set a short interval for testing
 
     @pytest.mark.real
     def test_real_openai_requests(self):
@@ -31,7 +32,7 @@ class TestBatchRequests(unittest.TestCase):
             os.makedirs(self.batch_dir)
         
         # Call make_batch_request with the real client
-        results = br.make_batch_request(client, self.conversations[:10], self.model_name, self.batch_dir, self.batch_run_name)
+        results = br.make_batch_request(client, self.conversations[:10], self.model_name, self.batch_dir, self.batch_run_name, self.status_check_interval)
         
         # Verify the result length
         self.assertEqual(len(results), 10)
@@ -48,7 +49,6 @@ class TestBatchRequests(unittest.TestCase):
     @patch("batch_requests.OpenAI")
     def test_mock_requests(self, mock_openai_class):
         """Test batch processing with mocked OpenAI requests."""
-        br.STATUS_CHECK_INTERVAL = 1
         # Mock the OpenAI client instance
         mock_client = mock_openai_class.return_value
         mock_client.files.create.return_value = MagicMock(id="mock-file-id")
@@ -68,7 +68,7 @@ class TestBatchRequests(unittest.TestCase):
         }) for i in range(10)])
         
         # Use the mock client for batch processing
-        results = br.make_batch_request(mock_client, self.conversations[:10], self.model_name, self.batch_dir, self.batch_run_name)
+        results = br.make_batch_request(mock_client, self.conversations[:10], self.model_name, self.batch_dir, self.batch_run_name, self.status_check_interval)
         
         # Check that the results are correct
         self.assertEqual(len(results), 10)
@@ -122,7 +122,7 @@ class TestBatchRequests(unittest.TestCase):
 
         mock_client.files.content.side_effect = mock_file_content
 
-        results = br.make_batch_request_multiple_batches(mock_client, self.conversations, self.model_name, self.batch_dir, self.batch_run_name)
+        results = br.make_batch_request_multiple_batches(mock_client, self.conversations, self.model_name, self.batch_dir, self.batch_run_name, self.status_check_interval)
 
         self.assertEqual(len(results), 100)
         for i, result in enumerate(results):
