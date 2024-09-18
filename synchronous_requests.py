@@ -17,7 +17,7 @@ DEFAULT_MAX_WORKERS = 10
 CACHE_SAVE_INTERVAL = 5  # Save cache to file every x updates
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 

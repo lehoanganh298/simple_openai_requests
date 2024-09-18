@@ -9,7 +9,7 @@ from caching import load_cache, save_cache, get_cache_key
 from typing import List, Dict, Any, Union
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def make_openai_requests(

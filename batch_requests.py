@@ -11,7 +11,7 @@ STATUS_CHECK_INTERVAL = 60
 MAX_REQUESTS_PER_BATCH = 50000
 MAX_BATCH_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def create_request(conversation: List[Dict[str, str]], model_name: str, idx: int, generation_args: Dict[str, Any] = {}) -> Dict[str, Any]:
@@ -52,7 +52,7 @@ def process_batch_output(output_file: str, batch: List[Dict[str, Any]]) -> List[
                 else:
                     results[idx]["response"] = result['response']['body']
 
-    logger.info(f"Batch output processed: {output_file}")
+    # logger.info(f"Batch output processed: {output_file}")
 
     return list(results.values())
 
