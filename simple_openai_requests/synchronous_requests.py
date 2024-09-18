@@ -8,7 +8,7 @@ import json
 import os
 import openai
 
-from caching import load_cache, save_cache, get_cache_key
+from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
 
 DEFAULT_MAX_RETRIES = 10
 DEFAULT_RETRY_DELAY = 30

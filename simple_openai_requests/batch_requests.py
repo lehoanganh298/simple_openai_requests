@@ -97,7 +97,7 @@ def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name
         else:
             logger.info(f"Batch status: {batch_status['status']}")
 
-        time.sleep(status_check_interval)  # Use the status_check_interval parameter here
+        time.sleep(status_check_interval) 
     if batch_in_progress:
         pbar.close()
 
@@ -111,7 +111,7 @@ def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name
 
     return process_batch_output(batch_output_file, batch)
 
-def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, status_check_interval: int, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, status_check_interval: int = 60, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     """
     Make a OpenAI batch requests for a list of conversations, retrieve and return the responses
 
@@ -125,7 +125,7 @@ def make_batch_request(client: OpenAI, conversations: Union[List[List[Dict[str, 
         model_name (str): The name of the OpenAI model to use.
         batch_dir (str): The directory to store batch-related files.
         batch_run_name (str): A unique name for this batch run.
-        status_check_interval (int): Interval in seconds between status checks.
+        status_check_interval (int): Interval in seconds between status checks. Default to 60.
         generation_args (Dict[str, Any], optional): Additional arguments for text generation. Defaults to {}.
 
     Returns:
@@ -211,7 +211,7 @@ def submit_and_process_batch(client: OpenAI, batch_file: str, batch_num: int, st
 
     return process_batch_output(batch_output_file, batch)
 
-def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, status_check_interval: int, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
+def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[List[List[Dict[str, str]]], List[Dict[str, Any]]], model_name: str, batch_dir: str, batch_run_name: str, status_check_interval: int = 60, generation_args: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     """
     Make one or more OpenAI batch requests for a list of conversations, retrieve and return the responses
     (split into multiple batch if list of conversations too large for one batch file)
@@ -223,7 +223,7 @@ def make_batch_request_multiple_batches(client: OpenAI, conversations: Union[Lis
         model_name (str): The name of the OpenAI model to use for processing.
         batch_dir (str): The directory where batch files will be stored.
         batch_run_name (str): A unique name for this batch run, used in file naming.
-        status_check_interval (int): Interval in seconds between status checks.
+        status_check_interval (int): Interval in seconds between status checks. Default to 60.
         generation_args (Dict[str, Any], optional): Additional arguments for the API call. Defaults to {}.
 
     Returns:

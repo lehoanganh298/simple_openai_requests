@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import batch_requests as br
 import json
 import os
 import copy
 import pytest
 from openai import OpenAI
+from simple_openai_requests import batch_requests as br
 
 class TestBatchRequests(unittest.TestCase):
     

@@ -26,6 +26,48 @@ This script provides a simple interface for making OpenAI API requests with vari
 - `full_response`: Return full API response or just the message content
 - `user_confirm`: If True, prompts for user confirmation before making API requests
 
+and other parameters in function `make_openai_requests()`'s documentation.
+
+### Return Format:
+
+The function returns a list of dictionaries, where each dictionary contains:
+
+- `index`: The index of the conversation
+- `conversation`: The original conversation
+- `response`: The API response (full response object if `full_response=True`, otherwise just the message content)
+- `is_cached_response`: Boolean indicating if the response was from cache
+- `error`: Any error message (None if no error occurred)
+
+## Installation
+
+### Option 1: Install using pip
+
+You can install the Simple OpenAI Request package using pip:
+
+```bash
+pip install simple-openai-requests
+```
+
+### Option 2: Install from source
+
+To install the package from source, follow these steps:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/lehoanganh298/simple_openai_requests.git
+   ```
+
+2. Navigate to the project directory:
+   ```bash
+   cd simple_openai_requests
+   ```
+
+3. Install the package:
+   ```bash
+   pip install .
+   ```
+
+
 ## Usage Examples:
 
 ### 1. Simple string prompts
