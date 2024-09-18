@@ -15,7 +15,7 @@ def save_cache(cache, cache_file):
                    'generation_args': value['generation_args'], 
                    'response': value['response']} for key, value in cache.items()]
     with open(cache_file, 'w') as f:
-        json.dump(cache_list, f)
+        json.dump(cache_list, f, ensure_ascii=False, indent=2)
 
 def get_cache_key(conversation, model_name, generation_args={}):
     return json.dumps({'conversation': conversation, 'model': model_name, 'generation_args': generation_args})
