@@ -3,9 +3,9 @@ import json
 import uuid
 import logging
 from openai import OpenAI
-from batch_requests import make_batch_request_multiple_batches
-from synchronous_requests import make_parallel_sync_requests
-from caching import load_cache, save_cache, get_cache_key
+from simple_openai_requests.batch_requests import make_batch_request_multiple_batches
+from simple_openai_requests.synchronous_requests import make_parallel_sync_requests
+from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
 from typing import List, Dict, Any, Union
 
 # Set up logging

@@ -7,8 +7,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 import pytest
 
-import simple_openai_requests as sor
-import batch_requests
+from simple_openai_requests import simple_openai_requests as sor
 
 class TestSimpleOpenAIRequests(unittest.TestCase):
 

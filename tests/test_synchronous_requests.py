@@ -10,8 +10,8 @@ import tempfile
 from openai import OpenAI
 
 # Import the functions to be tested
-from synchronous_requests import make_api_call, make_parallel_sync_requests, CACHE_SAVE_INTERVAL
-from caching import load_cache, save_cache, get_cache_key
+from simple_openai_requests.synchronous_requests import make_api_call, make_parallel_sync_requests, CACHE_SAVE_INTERVAL
+from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
 
 class TestParallelSyncRequests(unittest.TestCase):
 
