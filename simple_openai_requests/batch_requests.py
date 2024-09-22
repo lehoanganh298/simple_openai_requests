@@ -89,7 +89,7 @@ def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name
             if batch_in_progress:
                 pbar.update(total_requests - pbar.n)
             break
-        elif batch_status['status'] in ["failed", "expired"]:
+        elif batch_status['status'] in ["failed", "expired", "cancelled"]:
             logger.error(f"Batch failed or expired. Status: {batch_status['status']}")
             if batch_in_progress:
                 pbar.close()
