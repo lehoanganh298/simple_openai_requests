@@ -52,7 +52,7 @@ def make_openai_requests(
             max_tokens, temperature, etc. Default is empty.
         cache_file (str, optional): Path to the cache file. If not set, it will check the 
             environment variable SIMPLE_OPENAI_REQUESTS_CACHE_FILE. If that is also not set, 
-            it defaults to '~/.gpt_cache.json'.
+            it defaults to '~/.gpt_cache.pkl'.
         batch_dir (str, optional): Directory for batch processing files. If not set, it will 
             check the environment variable SIMPLE_OPENAI_REQUESTS_BATCH_DIR. If that is also 
             not set, it defaults to '~/.gpt_batch_requests'.
@@ -94,7 +94,7 @@ def make_openai_requests(
     client = OpenAI(api_key=api_key)
 
     # Set cache_file and batch_dir to environment variables if not provided
-    cache_file = cache_file or os.getenv('SIMPLE_OPENAI_REQUESTS_CACHE_FILE', os.path.expanduser('~/.gpt_cache.json'))
+    cache_file = cache_file or os.getenv('SIMPLE_OPENAI_REQUESTS_CACHE_FILE', os.path.expanduser('~/.gpt_cache.pkl'))
     batch_dir = batch_dir or os.getenv('SIMPLE_OPENAI_REQUESTS_BATCH_DIR', os.path.expanduser('~/.gpt_batch_requests'))
 
     conversation_formated = reformat_conversations(conversations)

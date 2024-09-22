@@ -167,15 +167,14 @@ class TestParallelSyncRequests(unittest.TestCase):
                                     cache={}, cache_file=cache_file_path)
 
         # Load the cache from the file
-        with open(cache_file_path, 'r') as f:
-            saved_cache = json.load(f)
+        saved_cache = load_cache(cache_file_path)
 
         # Clean up the temporary file
         os.unlink(cache_file_path)
 
         # Assertions
         self.assertEqual(len(saved_cache), len(self.conversations))
-        for item in saved_cache:
+        for key, item in saved_cache.items():
             self.assertIn('conversation', item)
             self.assertIn('model', item)
             self.assertIn('generation_args', item)

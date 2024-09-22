@@ -8,6 +8,7 @@ from openai.types.chat.chat_completion import Choice
 import pytest
 
 from simple_openai_requests import simple_openai_requests as sor
+from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
 
 class TestSimpleOpenAIRequests(unittest.TestCase):
 
@@ -125,15 +126,17 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
             for i, conv in enumerate(self.conversations[1:])
         ]
 
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_cache_file:
+        with tempfile.NamedTemporaryFile(mode='wb+', delete=False) as temp_cache_file:
             cache_file_path = temp_cache_file.name
             # Pre-populate cache with one conversation
-            json.dump([{
+            cache_list = [{
                 "conversation": self.conversations[0],
                 "model": self.model,
                 "generation_args": self.generation_args,
                 "response": self.create_mock_completion("Cached response").model_dump()
-            }], temp_cache_file)
+            }]
+            cache = {get_cache_key(item['conversation'], item['model'], item['generation_args']): item for item in cache_list}
+            save_cache(cache, cache_file_path)
             temp_cache_file.flush()
 
         results = sor.make_openai_requests(
@@ -158,8 +161,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         mock_batch_request.assert_called_once()
 
         # Verify that the cache was updated
-        with open(cache_file_path, 'r') as f:
-            updated_cache = json.load(f)
+        updated_cache = load_cache(cache_file_path)
         self.assertEqual(len(updated_cache), len(self.conversations))
 
         os.unlink(cache_file_path)
@@ -175,12 +177,14 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_cache_file:
             cache_file_path = temp_cache_file.name
             # Pre-populate cache with one conversation
-            json.dump([{
+            cache_list = [{
                 "conversation": self.conversations[0],
                 "model": self.model,
                 "generation_args": self.generation_args,
                 "response": self.create_mock_completion("Cached response").model_dump()
-            }], temp_cache_file)
+            }]
+            cache = {get_cache_key(item['conversation'], item['model'], item['generation_args']): item for item in cache_list}
+            save_cache(cache, cache_file_path)
             temp_cache_file.flush()
 
         results = sor.make_openai_requests(
@@ -204,8 +208,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         self.assertEqual(mock_client.chat.completions.create.call_count, len(self.conversations) - 1)
 
         # Verify that the cache was updated
-        with open(cache_file_path, 'r') as f:
-            updated_cache = json.load(f)
+        updated_cache = load_cache(cache_file_path)
         self.assertEqual(len(updated_cache), len(self.conversations))
 
         os.unlink(cache_file_path)

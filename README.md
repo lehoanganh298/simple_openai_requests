@@ -21,7 +21,7 @@ This script provides a simple interface for making OpenAI API requests with vari
 ### Additional Options:
 
 - `generation_args`: Additional arguments for the API call (e.g., max_tokens, temperature)
-- `cache_file`: Path to the cache file (default: environment variable `SIMPLE_OPENAI_REQUESTS_CACHE_FILE` or default as `~/.gpt_cache.json`)
+- `cache_file`: Path to the cache file (default: environment variable `SIMPLE_OPENAI_REQUESTS_CACHE_FILE` or default as `~/.gpt_cache.pkl`)
 - `batch_dir`: Directory for batch processing files (default: environment variable `SIMPLE_OPENAI_REQUESTS_BATCH_DIR` or default as `~/.gpt_batch_requests`)
 - `full_response`: Return full API response or just the message content
 - `user_confirm`: If True, prompts for user confirmation before making API requests
