@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="simple_openai_requests",
-    version="0.1.0",
+    version="1.0.0",
     author="Le Hoang Anh",
     author_email="lehoanganh29896@gmail.com",
-    description="Unify OpenAI requests use cases into a simple interface",
+    description="Unify common OpenAI API requests use cases into a simple interface",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/lehoanganh298/simple_openai_requests",
