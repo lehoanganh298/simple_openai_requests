@@ -23,6 +23,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         self.patcher = patch('builtins.input', return_value='y')
         self.mock_input = self.patcher.start()
         self.status_check_interval = 1  # Set a short interval for testing
+        if os.environ.get('OPENAI_API_KEY') is None:
+            os.environ['OPENAI_API_KEY'] = ''
 
     def tearDown(self):
         self.patcher.stop()
@@ -37,10 +39,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         )
 
     @pytest.mark.mock
-    @patch('simple_openai_requests.OpenAI')
-    @patch('simple_openai_requests.make_batch_request_multiple_batches')
-    def test_batch_request_without_cache_full_response(self, mock_batch_request, mock_openai):
-        mock_client = mock_openai.return_value
+    @patch('simple_openai_requests.simple_openai_requests.make_batch_request_multiple_batches')
+    def test_batch_request_without_cache_full_response(self, mock_batch_request):
         mock_batch_request.return_value = [
             {"index": i, "conversation": conv, "response": self.create_mock_completion(f"Response {i}").model_dump(), "error": None}
             for i, conv in enumerate(self.conversations)
@@ -66,10 +66,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         mock_batch_request.assert_called_once()
 
     @pytest.mark.mock
-    @patch('simple_openai_requests.OpenAI')
-    @patch('simple_openai_requests.make_batch_request_multiple_batches')
-    def test_batch_request_without_cache_partial_response(self, mock_batch_request, mock_openai):
-        mock_client = mock_openai.return_value
+    @patch('simple_openai_requests.simple_openai_requests.make_batch_request_multiple_batches')
+    def test_batch_request_without_cache_partial_response(self, mock_batch_request):
         mock_batch_request.return_value = [
             {"index": i, "conversation": conv, "response": self.create_mock_completion(f"Response {i}").model_dump(), "error": None}
             for i, conv in enumerate(self.conversations)
@@ -95,10 +93,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         mock_batch_request.assert_called_once()
 
     @pytest.mark.mock
-    @patch('simple_openai_requests.OpenAI')
-    @patch('simple_openai_requests.make_parallel_sync_requests')
-    def test_sync_request_without_cache(self, mock_sync_requests, mock_openai):
-        mock_client = mock_openai.return_value
+    @patch('simple_openai_requests.simple_openai_requests.make_parallel_sync_requests')
+    def test_sync_request_without_cache(self, mock_sync_requests):
         mock_sync_requests.return_value = [
             {"index": i, "conversation": conv, "response": self.create_mock_completion(f"Response {i}").model_dump(), "error": None}
             for i, conv in enumerate(self.conversations)
@@ -122,10 +118,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         mock_sync_requests.assert_called_once()
 
     @pytest.mark.mock
-    @patch('simple_openai_requests.OpenAI')
-    @patch('simple_openai_requests.make_batch_request_multiple_batches')
-    def test_batch_request_with_cache(self, mock_batch_request, mock_openai):
-        mock_client = mock_openai.return_value
+    @patch('simple_openai_requests.simple_openai_requests.make_batch_request_multiple_batches')
+    def test_batch_request_with_cache(self, mock_batch_request):
         mock_batch_request.return_value = [
             {"index": i, "conversation": conv, "response": self.create_mock_completion(f"Response {i}").model_dump(), "error": None}
             for i, conv in enumerate(self.conversations[1:])
@@ -171,7 +165,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         os.unlink(cache_file_path)
 
     @pytest.mark.mock
-    @patch('simple_openai_requests.OpenAI')
+    @patch('simple_openai_requests.simple_openai_requests.OpenAI')
     def test_sync_request_with_cache(self, mock_openai):
         mock_client = mock_openai.return_value
         mock_client.chat.completions.create.side_effect = [
@@ -217,7 +211,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         os.unlink(cache_file_path)
 
     @pytest.mark.mock
-    @patch('simple_openai_requests.OpenAI')
+    @patch('simple_openai_requests.simple_openai_requests.OpenAI')
     def test_error_handling(self, mock_openai):
         mock_client = mock_openai.return_value
         mock_client.chat.completions.create.side_effect = Exception("API Error")
@@ -233,10 +227,8 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
         self.assertIsInstance(result, list)  # Ensure that the result is a list, indicating no error occurred
 
     @pytest.mark.mock
-    @patch('simple_openai_requests.OpenAI')
-    @patch('simple_openai_requests.make_batch_request_multiple_batches')
-    def test_multiple_batches(self, mock_multiple_batches, mock_openai):
-        mock_client = mock_openai.return_value
+    @patch('simple_openai_requests.simple_openai_requests.make_batch_request_multiple_batches')
+    def test_multiple_batches(self, mock_multiple_batches):
         mock_multiple_batches.return_value = [
             {"index": i, "conversation": conv, "response": self.create_mock_completion(f"Response {i}").model_dump(), "error": None}
             for i, conv in enumerate(self.conversations * 100)  # Create a large number of conversations
@@ -276,7 +268,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
     @pytest.mark.real
     def test_real_openai_request_sync_no_cache_full_response(self):
         api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
+        if not api_key or api_key == '':
             pytest.skip("OPENAI_API_KEY not set in environment")
 
         conversations = [
@@ -298,7 +290,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
     @pytest.mark.real
     def test_real_openai_request_sync_no_cache_partial_response(self):
         api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
+        if not api_key or api_key == '':
             pytest.skip("OPENAI_API_KEY not set in environment")
 
         conversations = [
@@ -320,7 +312,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
     @pytest.mark.real
     def test_real_openai_request_batch_no_cache(self):
         api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
+        if not api_key or api_key == '':
             pytest.skip("OPENAI_API_KEY not set in environment")
 
         conversations = [
@@ -344,7 +336,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
     @pytest.mark.real
     def test_real_openai_request_sync_with_cache(self):
         api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
+        if not api_key or api_key == '':
             pytest.skip("OPENAI_API_KEY not set in environment")
 
         conversations = [
@@ -392,7 +384,7 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
     @pytest.mark.real
     def test_real_openai_request_batch_with_cache(self):
         api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
+        if not api_key or api_key == '':
             pytest.skip("OPENAI_API_KEY not set in environment")
 
         conversations = [
@@ -441,6 +433,109 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
 
         os.unlink(cache_file_path)
 
+    @pytest.mark.examples
+    def test_simple_string_prompts(self):
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key or api_key == '':
+            pytest.skip("OPENAI_API_KEY not set in environment")
+
+        conversations = [
+            "What is the capital of France?",
+            "How does photosynthesis work?"
+        ]
+
+        results = sor.make_openai_requests(
+            conversations=conversations,
+            model="gpt-3.5-turbo",
+            use_batch=False,
+            use_cache=True
+        )
+
+        self.assertEqual(len(results), len(conversations))
+        for result in results:
+            self.assertIn('conversation', result)
+            self.assertIn('response', result)
+            self.assertIsInstance(result['response'], str)
+
+            print(f"Question: {result['conversation'][0]['content']}")
+            print(f"Answer: {result['response']}\n")
+
+    @pytest.mark.examples
+    def test_conversation_format(self):
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key or api_key == '':
+            pytest.skip("OPENAI_API_KEY not set in environment")
+
+        conversations = [
+            [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "What is the best way to learn programming?"}
+            ],
+            [
+                {"role": "system", "content": "You are a knowledgeable historian."},
+                {"role": "user", "content": "Explain the significance of the Industrial Revolution."}
+            ]
+        ]
+
+        results = sor.make_openai_requests(
+            conversations=conversations,
+            model="gpt-3.5-turbo",
+            use_batch=True,
+            use_cache=False,
+            generation_args={"max_tokens": 150}
+        )
+
+        self.assertEqual(len(results), len(conversations))
+        for result in results:
+            self.assertIn('conversation', result)
+            self.assertIn('response', result)
+            self.assertIsInstance(result['response'], str)
+
+            print(f"Question: {result['conversation'][-1]['content']}")
+            print(f"Answer: {result['response']}\n")
+
+    @pytest.mark.examples
+    def test_indexed_conversation_format(self):
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key or api_key == '':
+            pytest.skip("OPENAI_API_KEY not set in environment")
+
+        conversations = [
+            {
+                "index": 0,
+                "conversation": [
+                    {"role": "system", "content": "You are a math tutor."},
+                    {"role": "user", "content": "Explain the Pythagorean theorem."}
+                ]
+            },
+            {
+                "index": 1,
+                "conversation": [
+                    {"role": "system", "content": "You are a creative writing assistant."},
+                    {"role": "user", "content": "Give me a writing prompt for a short story."}
+                ]
+            }
+        ]
+
+        results = sor.make_openai_requests(
+            conversations=conversations,
+            model="gpt-3.5-turbo",
+            use_batch=False,
+            use_cache=True,
+            max_workers=2
+        )
+
+        self.assertEqual(len(results), len(conversations))
+        for result in results:
+            self.assertIn('index', result)
+            self.assertIn('conversation', result)
+            self.assertIn('response', result)
+            self.assertIsInstance(result['response'], str)
+
+            print(f"Index: {result['index']}")
+            print(f"Question: {result['conversation'][-1]['content']}")
+            print(f"Answer: {result['response']}\n")
+
     def _assert_valid_results(self, results, expected_length, full_response=True):
         self.assertEqual(len(results), expected_length)
         for result in results:
@@ -457,8 +552,15 @@ class TestSimpleOpenAIRequests(unittest.TestCase):
                 self.assertGreater(len(result['response']), 0)
 
 if __name__ == '__main__':
-    # pytest.main(["-v", "-m", "mock", "-k", "test_sync_request_with_cache", "test_simple_openai_requests.py", "--log-cli-level=INFO"])
-    # pytest.main(["-v", "-m", "mock", "test_simple_openai_requests.py", "--log-cli-level=INFO"])
+    # unittest.main()  
+    
+    # suite = unittest.TestSuite()
+    # suite.addTest(TestSimpleOpenAIRequests('test_sync_request_without_cache'))
+    # runner = unittest.TextTestRunner()
+    # runner.run(suite)
+    
+    # pytest.main(["-v", "-m", "mock", "-k", "test_sync_request_without_cache", "tests/test_simple_openai_requests.py", "--log-cli-level=INFO"])
+    # pytest.main(["-v", "-m", "mock", "tests/test_simple_openai_requests.py", "--log-cli-level=INFO"])
     # To run real tests, add OPENAI_API_KEY to environment variable and use:
-    pytest.main(["-v", "-m", "real", "test_simple_openai_requests.py", "--log-cli-level=INFO"])
+    pytest.main(["-v", "-m", "examples", "tests/test_simple_openai_requests.py", "--log-cli-level=INFO"])
     # pytest.main(["-v", "-m", "real", "-k", "test_real_openai_request_batch_with_cache", "test_simple_openai_requests.py", "--log-cli-level=INFO"])

@@ -10,6 +10,7 @@ import tempfile
 from openai import OpenAI
 
 # Import the functions to be tested
+from simple_openai_requests import synchronous_requests as sr
 from simple_openai_requests.synchronous_requests import make_api_call, make_parallel_sync_requests, CACHE_SAVE_INTERVAL
 from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
 
@@ -28,7 +29,7 @@ class TestParallelSyncRequests(unittest.TestCase):
         ]
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
     def test_successful_api_call(self, mock_openai):
         mock_client = mock_openai.return_value
         mock_completion = ChatCompletion(
@@ -46,8 +47,8 @@ class TestParallelSyncRequests(unittest.TestCase):
         self.assertEqual(result["response"]["choices"][0]["message"]["content"], "Hello! How can I assist you today?")
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
-    @patch('synchronous_requests.time.sleep', return_value=None)
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.time.sleep', return_value=None)
     def test_rate_limit_with_retry(self, mock_sleep, mock_openai):
         mock_client = mock_openai.return_value
         mock_client.chat.completions.create.side_effect = [
@@ -61,16 +62,16 @@ class TestParallelSyncRequests(unittest.TestCase):
                 object="chat.completion"
             )
         ]
-
-        result = make_api_call(mock_client, self.conversations[0], self.model, self.generation_args, self.max_retries, self.retry_delay)
+        mock_sleep.return_value = ['fadsfasdfaffsd']
+        result = sr.make_api_call(mock_client, self.conversations[0], self.model, self.generation_args, self.max_retries, self.retry_delay)
 
         self.assertIsNone(result["error"])
         self.assertEqual(result["response"]["choices"][0]["message"]["content"], "Hello! How can I assist you today?")
         self.assertEqual(mock_sleep.call_count, 2)
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
-    @patch('synchronous_requests.time.sleep', return_value=None)
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.time.sleep', return_value=None)
     def test_rate_limit_max_retries_exceeded(self, mock_sleep, mock_openai):
         mock_client = mock_openai.return_value
         mock_client.chat.completions.create.side_effect = Exception("Rate limit exceeded")
@@ -82,7 +83,7 @@ class TestParallelSyncRequests(unittest.TestCase):
         self.assertEqual(mock_sleep.call_count, self.max_retries - 1)
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
     def test_other_api_error(self, mock_openai):
         mock_client = mock_openai.return_value
         mock_client.chat.completions.create.side_effect = Exception("API error")
@@ -93,7 +94,7 @@ class TestParallelSyncRequests(unittest.TestCase):
         self.assertIsNone(result["response"])
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
     def test_parallel_requests_all_successful(self, mock_openai):
         mock_client = mock_openai.return_value
         
@@ -116,8 +117,9 @@ class TestParallelSyncRequests(unittest.TestCase):
             self.assertEqual(result["response"]["choices"][0]["message"]["content"], "Response")
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
-    def test_parallel_requests_mixed_results(self, mock_openai):
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.save_cache')
+    def test_parallel_requests_mixed_results(self, mock_make_api_call, mock_openai):
         mock_client = mock_openai.return_value
         mock_completion = ChatCompletion(
             created=123456,
@@ -131,7 +133,8 @@ class TestParallelSyncRequests(unittest.TestCase):
             mock_completion,
             Exception("Rate limit exceeded"),
             Exception("API error")] + [Exception("Rate limit exceeded")] * self.max_retries
-
+        
+        mock_make_api_call.return_value = 'fasdfafdfdfdfdfdf'
         results = make_parallel_sync_requests(mock_client, self.conversations, self.model, self.generation_args, self.max_workers, self.max_retries, self.retry_delay)
 
         self.assertEqual(len(results), len(self.conversations))
@@ -142,7 +145,7 @@ class TestParallelSyncRequests(unittest.TestCase):
 
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
     def test_cache_saving(self, mock_openai):
         mock_client = mock_openai.return_value
         mock_completion = ChatCompletion(
@@ -180,8 +183,8 @@ class TestParallelSyncRequests(unittest.TestCase):
             self.assertEqual(item['response']['choices'][0]['message']['content'], "Cached response")
 
     @pytest.mark.mock
-    @patch('synchronous_requests.OpenAI')
-    @patch('synchronous_requests.save_cache')
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
+    @patch('simple_openai_requests.synchronous_requests.save_cache')
     def test_cache_update_and_save_interval(self, mock_save_cache, mock_openai):
         mock_client = mock_openai.return_value
         mock_completion = ChatCompletion(
@@ -228,7 +231,7 @@ class TestParallelSyncRequests(unittest.TestCase):
     @pytest.mark.real
     def test_parallel_requests_all_successful_real_requests(self):
         api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
+        if not api_key or api_key == '':
             pytest.skip("OPENAI_API_KEY not set in environment")
 
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -245,15 +248,15 @@ class TestParallelSyncRequests(unittest.TestCase):
             self.assertIsNotNone(result["response"])
 
 if __name__ == '__main__':
-    unittest.main()  
+    # unittest.main()  
     
     # suite = unittest.TestSuite()
     # suite.addTest(TestParallelSyncRequests('test_parallel_requests_all_successful_real_requests'))
     # runner = unittest.TextTestRunner()
     # runner.run(suite)
 
-    # pytest.main(["-v", "-k", "test_cache_update_and_save_interval", "test_synchronous_requests.py"])
-    # pytest.main(["-v", "-m", "mock", "test_synchronous_requests.py", "--log-cli-level=INFO"])
+    pytest.main(["-v", "-k", "test_parallel_requests_mixed_results", "tests/test_synchronous_requests.py"])
+    # pytest.main(["-v", "-m", "mock", "test_simple_openai_requests.synchronous_requests.py", "--log-cli-level=INFO"])
     # pytest.main(["-v", "-m", "mock"])
 
-    # pytest.main(["-v", "-m", "real", "test_synchronous_requests.py"])
+    # pytest.main(["-v", "-m", "real", "test_simple_openai_requests.synchronous_requests.py"])

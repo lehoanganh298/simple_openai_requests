@@ -46,7 +46,7 @@ class TestBatchRequests(unittest.TestCase):
             self.assertIn('content', result['response']['choices'][0]['message'])
 
     @pytest.mark.mock
-    @patch("batch_requests.OpenAI")
+    @patch("simple_openai_requests.batch_requests.OpenAI")
     def test_mock_requests(self, mock_openai_class):
         """Test batch processing with mocked OpenAI requests."""
         # Mock the OpenAI client instance
@@ -83,7 +83,7 @@ class TestBatchRequests(unittest.TestCase):
         mock_client.files.content.assert_called_once()
 
     @pytest.mark.mock
-    @patch("batch_requests.OpenAI")
+    @patch("simple_openai_requests.batch_requests.OpenAI")
     def test_make_batch_request_multiple_batches(self, mock_openai_class):
         br.STATUS_CHECK_INTERVAL = 1
         br.MAX_REQUESTS_PER_BATCH = 50
@@ -156,8 +156,8 @@ if __name__ == "__main__":
     # runner = unittest.TextTestRunner()
     # runner.run(suite)
 
-    pytest.main(["-v", "-m", "mock", "-k", "test_make_batch_request_multiple_batches", "test_batch_requests.py"])
-    # pytest.main(["-v", "-m", "mock", "test_batch_requests.py"])
+    pytest.main(["-v", "-m", "mock", "-k", "test_make_batch_request_multiple_batches", "test_simple_openai_requests.batch_requests.py"])
+    # pytest.main(["-v", "-m", "mock", "test_simple_openai_requests.batch_requests.py"])
     # pytest.main(["-v", "-m", "mock"])
 
-    # pytest.main(["-v", "-m", "real", "test_batch_requests.py"])
+    # pytest.main(["-v", "-m", "real", "test_simple_openai_requests.batch_requests.py"])

@@ -153,7 +153,7 @@ def make_openai_requests(
     if use_cache:
         logger.info(f"Request completed. Total results: {len(all_results)}")
     
-    # Process cached results if full_response is False
+    # Process results if full_response is False
     if not full_response:
         for result in all_results:
             if result['response'] is not None:
