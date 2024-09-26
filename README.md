@@ -25,6 +25,8 @@ This script provides a simple interface for making OpenAI API requests with vari
 - `batch_dir`: Directory for batch processing files (default: environment variable `SIMPLE_OPENAI_REQUESTS_BATCH_DIR` or default as `~/.gpt_batch_requests`)
 - `full_response`: Return full API response or just the message content
 - `user_confirm`: If True, prompts for user confirmation before making API requests
+- `base_url`: use when calling vLLM APIs.
+
 
 and other parameters in function `make_openai_requests()`'s documentation.
 
@@ -91,6 +93,30 @@ for result in results:
     print(f"Question: {result['conversation'][0]['content']}")
     print(f"Answer: {result['response']}\n")
 ```
+Output
+``` json
+INFO - Cache disabled
+Making 2 synchronous API requests using model 'gpt-3.5-turbo'? ([y]/n): 
+API Requests: 100%|████████████████████████████████| 2/2 [00:04<00:00,  2.09s/request]
+INFO - Completed 2 synchronous API requests
+INFO - Successful requests: 2/2
+INFO - Failed requests: 0/2
+[
+  {
+    "index": 0,
+    "conversation": [
+      {
+        "role": "user",
+        "content": "What is the capital of France?"
+      }
+    ],
+    "response": "The capital of France is Paris.",
+    "error": null,
+    "is_cached_response": false
+  },
+  ...
+]
+```
 ### 2. Conversation format
 ```python
 conversations = [
@@ -113,6 +139,14 @@ results = make_openai_requests(
 for result in results:
     print(f"Question: {result['conversation'][-1]['content']}")
     print(f"Answer: {result['response']}\n")
+```
+
+Output
+```json
+Making 2 batch API requests using model 'gpt-4o-mini' with batch run name 'ac3275cd-8b2e-4d8d-97a0-092916b6b9ce'? ([y]/n): 
+INFO - Batch request file created: /Users/user/.gpt_batch_requests/ac3275cd-8b2e-4d8d-97a0-092916b6b9ce_batch_request.jsonl
+INFO - Batch submitted with file ID: file-wEdX4pNawx7XmUocTVcwzAF9
+INFO - Batch processing started. Batch ID: batch_TgV5j1LPf3nYWwKgBCfF4qZ7
 ```
 ### 3. Indexed conversation format
 

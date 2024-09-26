@@ -28,6 +28,7 @@ def make_openai_requests(
     full_response: bool = False,
     api_key = None,
     user_confirm: bool = True,
+    base_url: str = None,  # New parameter for base URL
 ) -> List[Dict[str, Any]]:
     """
     Make OpenAI API requests for a list of conversations, with options for batching API 
@@ -67,6 +68,7 @@ def make_openai_requests(
         api_key (str, optional): OpenAI API key. If not provided, it will be read from the OPENAI_API_KEY environment variable.
         user_confirm (bool, optional): If True, prompt for user confirmation before making API requests. 
             If False, bypass user confirmation. Default is True.
+        base_url (str, optional): Base URL for the OpenAI client. Use when calling vLLM APIs.
 
     Returns:
         List[Dict[str, Any]]: A list of dictionaries, each containing:
@@ -91,7 +93,10 @@ def make_openai_requests(
         logger.error("API key not found")
         raise ValueError("Either api_key param or OPENAI_API_KEY environment variable need to be set")
     
-    client = OpenAI(api_key=api_key)
+    if base_url:
+        client = OpenAI(api_key=api_key, base_url=base_url)
+    else:
+        client = OpenAI(api_key=api_key)
 
     # Set cache_file and batch_dir to environment variables if not provided
     cache_file = cache_file or os.getenv('SIMPLE_OPENAI_REQUESTS_CACHE_FILE', os.path.expanduser('~/.gpt_cache.pkl'))

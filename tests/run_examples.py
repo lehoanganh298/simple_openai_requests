@@ -1,4 +1,5 @@
 from simple_openai_requests import make_openai_requests
+import json
 
 def print_results(results):
     print('--- OUTPUT')
@@ -24,10 +25,11 @@ def run_example_1():
         conversations=conversations,
         model="gpt-3.5-turbo",
         use_batch=False,
-        use_cache=True
+        use_cache=False
     )
 
-    print_results(results)
+    print(json.dumps(results, ensure_ascii=False, indent=2))
+    # print_results(results)
 
 def run_example_2():
     print("Example 2: Conversation format")
@@ -49,7 +51,9 @@ def run_example_2():
         generation_args={"max_tokens": 150}
     )
 
-    print_results(results)
+    print(json.dumps(results, ensure_ascii=False, indent=2))
+
+    # print_results(results)
 
 def run_example_3():
     print("Example 3: Indexed conversation format")
@@ -80,8 +84,8 @@ def run_example_3():
     print_results(results)
 
 if __name__ == "__main__":
-    run_example_1()
-    print("\n" + "=" * 70 + "\n")
+    # run_example_1()
+    # print("\n" + "=" * 70 + "\n")
     run_example_2()
-    print("\n" + "=" * 70 + "\n")
-    run_example_3()
+    # print("\n" + "=" * 70 + "\n")
+    # run_example_3()
