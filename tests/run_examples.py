@@ -23,7 +23,7 @@ def run_example_1():
 
     results = make_openai_requests(
         conversations=conversations,
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         use_batch=False,
         use_cache=False
     )
@@ -48,6 +48,7 @@ def run_example_2():
         model="gpt-4o-mini",
         use_batch=True,
         use_cache=False,
+        check_status_interval=10,
         generation_args={"max_tokens": 150}
     )
 
@@ -75,7 +76,7 @@ def run_example_3():
     ]
     results = make_openai_requests(
         conversations=conversations,
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         use_batch=False,
         use_cache=False,
         max_workers=2

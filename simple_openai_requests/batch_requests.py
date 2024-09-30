@@ -6,6 +6,7 @@ from openai import OpenAI
 from typing import List, Dict, Any, Tuple, Union
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
 MAX_REQUESTS_PER_BATCH = 50000
 MAX_BATCH_FILE_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
@@ -83,10 +84,12 @@ def process_single_batch(client: OpenAI, batch: List[Dict[str, Any]], model_name
             if not batch_in_progress:
                 batch_in_progress = True
                 pbar = tqdm(total=total_requests, ncols=100, desc="Processing batch")
+            pbar.set_description(f"Processing batch (Last Check: {datetime.now().strftime('%H:%M:%S')})")
             pbar.update(completed_requests - pbar.n)
 
         elif batch_status['status'] == "completed":
             if batch_in_progress:
+                pbar.set_description(f"Processing batch (Last Check: {datetime.now().strftime('%H:%M:%S')})")
                 pbar.update(total_requests - pbar.n)
             break
         elif batch_status['status'] in ["failed", "expired", "cancelled"]:
