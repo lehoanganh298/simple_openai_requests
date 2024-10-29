@@ -8,11 +8,12 @@ import os
 import json
 import tempfile
 from openai import OpenAI
+import sqlite3
+from simple_openai_requests.db_caching import SQLiteCache, get_cache_key
 
 # Import the functions to be tested
 from simple_openai_requests import synchronous_requests as sr
 from simple_openai_requests.synchronous_requests import make_api_call, make_parallel_sync_requests, CACHE_SAVE_INTERVAL
-from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
 
 class TestParallelSyncRequests(unittest.TestCase):
 
@@ -185,6 +186,7 @@ class TestParallelSyncRequests(unittest.TestCase):
     @patch('simple_openai_requests.synchronous_requests.OpenAI')
     @patch('simple_openai_requests.synchronous_requests.save_cache')
     def test_cache_update_and_save_interval(self, mock_save_cache, mock_openai):
+        """Test that cache updates are saved in batches according to CACHE_SAVE_INTERVAL"""
         mock_client = mock_openai.return_value
         mock_completion = ChatCompletion(
             created=123456,
@@ -202,30 +204,122 @@ class TestParallelSyncRequests(unittest.TestCase):
             for i in range(num_conversations)
         ]
 
-        # Create a temporary cache file
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_cache_file:
-            cache_file_path = temp_cache_file.name
+        # Create a temporary SQLite database
+        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as temp_db:
+            db_path = temp_db.name
+
+        try:
+            cache = SQLiteCache(db_path)
+            
+            # Run the function with caching
+            results = make_parallel_sync_requests(
+                mock_client, conversations, self.model, 
+                self.generation_args, self.max_workers, 
+                self.max_retries, self.retry_delay,
+                use_cache=True, cache=cache, cache_file=db_path
+            )
+
+            # Verify results
+            self.assertEqual(len(results), num_conversations)
+            
+            # Check cache contents and verify batching
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.execute('SELECT COUNT(*) FROM cache')
+                cache_count = cursor.fetchone()[0]
+                self.assertEqual(cache_count, num_conversations)
+
+                # Check timestamps to verify batching
+                cursor = conn.execute('SELECT created_at FROM cache ORDER BY created_at')
+                timestamps = [row[0] for row in cursor.fetchall()]
+                unique_timestamps = len(set(timestamps))
+                expected_batches = (num_conversations // CACHE_SAVE_INTERVAL) + 1
+                self.assertLessEqual(unique_timestamps, expected_batches)
+
+        finally:
+            os.unlink(db_path)
+
+    @pytest.mark.mock
+    @patch('simple_openai_requests.synchronous_requests.OpenAI')
+    def test_cache_batch_saving(self, mock_openai):
+        """Test that cache updates are saved in batches according to CACHE_SAVE_INTERVAL"""
+        mock_client = mock_openai.return_value
+        num_conversations = sr.CACHE_SAVE_INTERVAL * 2 + 1  # Create more conversations than CACHE_SAVE_INTERVAL
+        
+        # Create mock completion response
+        mock_completion = ChatCompletion(
+            created=123456,
+            id="1", 
+            choices=[Choice(finish_reason='stop', index=0, message=ChatCompletionMessage(content="Test response", role="assistant"))],
+            model=self.model,
+            object="chat.completion"
+        )
+        mock_client.chat.completions.create.return_value = mock_completion
+
+        # Create a temporary SQLite database
+        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as temp_db:
+            db_path = temp_db.name
+
+        cache = SQLiteCache(db_path)
+        conversations = [
+            [{"role": "user", "content": f"Test message {i}"}]
+            for i in range(num_conversations)
+        ]
 
         # Run the function with caching
-        make_parallel_sync_requests(mock_client, conversations, self.model, self.generation_args, 
-                                    self.max_workers, self.max_retries, self.retry_delay, use_cache=True,
-                                    cache={}, cache_file=cache_file_path)
+        results = make_parallel_sync_requests(
+            mock_client, conversations, self.model, 
+            self.generation_args, self.max_workers, 
+            self.max_retries, self.retry_delay,
+            use_cache=True, cache=cache
+        )
 
-        # Clean up the temporary file
-        os.unlink(cache_file_path)
+        # Check results
+        self.assertEqual(len(results), num_conversations)
+        
+        # Verify cache contents
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.execute('SELECT COUNT(*) FROM cache')
+            cache_count = cursor.fetchone()[0]
+            self.assertEqual(cache_count, num_conversations)
 
-        # Assertions
-        # The cache should be saved every CACHE_SAVE_INTERVAL updates, plus once at the end
-        expected_save_calls = (num_conversations // CACHE_SAVE_INTERVAL) + 1
-        self.assertEqual(mock_save_cache.call_count, expected_save_calls)
+        # Clean up
+        os.unlink(db_path)
 
-        # Check that the last call to save_cache contains all conversations
-        last_call_args = mock_save_cache.call_args[0]
-        self.assertEqual(len(last_call_args[0]), num_conversations)  # First argument is the cache
+    # @pytest.mark.mock
+    # @patch('simple_openai_requests.synchronous_requests.OpenAI')
+    # def test_cache_error_handling(self, mock_openai):
+    #     """Test that the system handles cache errors gracefully"""
+    #     mock_client = mock_openai.return_value
+    #     mock_completion = ChatCompletion(
+    #         created=123456,
+    #         id="1", 
+    #         choices=[Choice(finish_reason='stop', index=0, message=ChatCompletionMessage(content="Test response", role="assistant"))],
+    #         model=self.model,
+    #         object="chat.completion"
+    #     )
+    #     mock_client.chat.completions.create.return_value = mock_completion
 
-        # Verify that save_cache was called with the correct file path
-        for call_args in mock_save_cache.call_args_list:
-            self.assertEqual(call_args[0][1], cache_file_path)  # Second argument is the file path
+    #     # Create a temporary file with invalid permissions
+    #     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as temp_db:
+    #         db_path = temp_db.name
+    #     os.chmod(db_path, 0o000)  # Remove all permissions
+
+    #     try:
+    #         cache = SQLiteCache(db_path)
+    #         # Function should complete without error despite cache issues
+    #         results = make_parallel_sync_requests(
+    #             mock_client, self.conversations, self.model,
+    #             self.generation_args, self.max_workers,
+    #             self.max_retries, self.retry_delay,
+    #             use_cache=True, cache=cache
+    #         )
+
+    #         self.assertEqual(len(results), len(self.conversations))
+    #         for result in results:
+    #             self.assertIsNotNone(result["response"])
+    #     finally:
+    #         os.chmod(db_path, 0o666)  # Restore permissions for cleanup
+    #         os.unlink(db_path)
 
     @pytest.mark.real
     def test_parallel_requests_all_successful_real_requests(self):
@@ -259,3 +353,4 @@ if __name__ == '__main__':
     # pytest.main(["-v", "-m", "mock"])
 
     # pytest.main(["-v", "-m", "real", "test_simple_openai_requests.synchronous_requests.py"])
+

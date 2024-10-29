@@ -156,7 +156,7 @@ if __name__ == "__main__":
     # runner = unittest.TextTestRunner()
     # runner.run(suite)
 
-    pytest.main(["-v", "-m", "mock", "-k", "test_make_batch_request_multiple_batches", "test_simple_openai_requests.batch_requests.py"])
+    pytest.main(["-v", "-m", "mock", "-k", "test_mock_requests", "test_simple_openai_requests.batch_requests.py"])
     # pytest.main(["-v", "-m", "mock", "test_simple_openai_requests.batch_requests.py"])
     # pytest.main(["-v", "-m", "mock"])
 

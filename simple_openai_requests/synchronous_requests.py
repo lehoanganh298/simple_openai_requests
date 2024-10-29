@@ -8,7 +8,7 @@ import json
 import os
 import openai
 
-from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
+from simple_openai_requests.db_caching import SQLiteCache, get_cache_key
 
 DEFAULT_MAX_RETRIES = 10
 DEFAULT_RETRY_DELAY = 30
@@ -89,15 +89,16 @@ def make_parallel_sync_requests(client: OpenAI,
                                 max_retries: int = DEFAULT_MAX_RETRIES, 
                                 retry_delay: float = DEFAULT_RETRY_DELAY, 
                                 use_cache: bool = False,
-                                cache=None, 
                                 cache_file=None) -> List[Dict[str, Any]]:
     num_requests = len(conversations)
     
-    # logger.info(f"Preparing to make {num_requests} API requests")
-    # logger.info(f"Model: {model}")
-    
-    cache_update_count = 0
+    # Initialize cache if needed
+    if use_cache:
+        cache = SQLiteCache(cache_file)
 
+    cache_updates = {}  # Store updates for batch processing
+    cache_update_count = 0  # Track number of updates since last save
+    
     # Normalize conversations to include index
     if isinstance(conversations[0], list):
         conversations = [{"index": idx, "conversation": conv} for idx, conv in enumerate(conversations)]
@@ -113,22 +114,32 @@ def make_parallel_sync_requests(client: OpenAI,
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
                 
-                # Update cache if the request was successful
+                # Collect successful results for batch cache update
                 if result["error"] is None and use_cache:
                     cache_key = get_cache_key(result["conversation"], model, generation_args)
-                    cache[cache_key] = {"model": model, "generation_args": generation_args, 'conversation': result['conversation'], 'response': result['response']}
+                    cache_updates[cache_key] = {
+                        "model": model,
+                        "generation_args": generation_args,
+                        'conversation': result['conversation'],
+                        'response': result['response']
+                    }
                     cache_update_count += 1
 
-                    # Save cache to file every N updates
-                    if cache_update_count % CACHE_SAVE_INTERVAL == 0 and cache_file:
-                        save_cache(cache, cache_file)
+                    # Perform batch cache update every CACHE_SAVE_INTERVAL requests
+                    if cache_update_count >= CACHE_SAVE_INTERVAL:
+                        if cache_updates:
+                            cache.set_many(cache_updates)
+                            logger.info(f"Intermediate cache update: saved {len(cache_updates)} entries")
+                            cache_updates = {}  # Clear the updates after saving
+                            cache_update_count = 0  # Reset the counter
 
                 results.append(result)
                 pbar.update(1)
 
-    # Save cache to file after finishing all requests
-    if use_cache:
-        save_cache(cache, cache_file)
+    # Perform final batch cache update for any remaining items
+    if cache_updates and use_cache:
+        cache.set_many(cache_updates)
+        logger.info(f"Final cache update: saved {len(cache_updates)} entries")
 
     # Sort results to match the order of input conversations
     sorted_results = sorted(results, key=lambda x: x["index"])

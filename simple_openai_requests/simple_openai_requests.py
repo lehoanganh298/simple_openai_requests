@@ -5,12 +5,16 @@ import logging
 from openai import OpenAI
 from simple_openai_requests.batch_requests import make_batch_request_multiple_batches
 from simple_openai_requests.synchronous_requests import make_parallel_sync_requests
-from simple_openai_requests.caching import load_cache, save_cache, get_cache_key
 from typing import List, Dict, Any, Union
+from simple_openai_requests.db_caching import SQLiteCache, get_cache_key
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Cache batch size configuration
+GET_BATCH_SIZE = 1000  # Number of items to retrieve in a single get_many operation
+SET_BATCH_SIZE = 1000  # Number of items to save in a single set_many operation
 
 def make_openai_requests(
     conversations: Union[List[str], List[List[Dict[str, str]]], List[Dict[str, Any]]],
@@ -53,7 +57,7 @@ def make_openai_requests(
             max_tokens, temperature, etc. Default is empty.
         cache_file (str, optional): Path to the cache file. If not set, it will check the 
             environment variable SIMPLE_OPENAI_REQUESTS_CACHE_FILE. If that is also not set, 
-            it defaults to '~/.gpt_cache.pkl'.
+            it defaults to '~/.gpt_cache.db'.
         batch_dir (str, optional): Directory for batch processing files. If not set, it will 
             check the environment variable SIMPLE_OPENAI_REQUESTS_BATCH_DIR. If that is also 
             not set, it defaults to '~/.gpt_batch_requests'.
@@ -99,7 +103,7 @@ def make_openai_requests(
         client = OpenAI(api_key=api_key)
 
     # Set cache_file and batch_dir to environment variables if not provided
-    cache_file = cache_file or os.getenv('SIMPLE_OPENAI_REQUESTS_CACHE_FILE', os.path.expanduser('~/.gpt_cache.pkl'))
+    cache_file = cache_file or os.getenv('SIMPLE_OPENAI_REQUESTS_CACHE_FILE', os.path.expanduser('~/.gpt_cache.db'))
     batch_dir = batch_dir or os.getenv('SIMPLE_OPENAI_REQUESTS_BATCH_DIR', os.path.expanduser('~/.gpt_batch_requests'))
 
     conversation_formated = reformat_conversations(conversations)
@@ -145,7 +149,7 @@ def make_openai_requests(
                                                            model, 
                                                            generation_args, 
                                                            max_workers, max_retries, retry_delay, 
-                                                           use_cache, cache, cache_file)
+                                                           use_cache, cache_file)
 
         for result in uncached_results:
             result['is_cached_response'] = False
@@ -183,38 +187,68 @@ def reformat_conversations(conversations):
     return reformatted
 
 def check_cache(cache_file, conversations, model, generation_args):
-    logger.info(f"Loading cache from {cache_file}")
-    cache = load_cache(cache_file)
-
-    # Check cache and prepare uncached conversations
+    logger.info("Initializing SQLite cache")
+    cache = SQLiteCache(cache_file)
+    
+    # Get all cache keys
+    cache_keys = [get_cache_key(conv['conversation'], model, generation_args) 
+                 for conv in conversations]
+    
     cached_results = []
     uncached_conversations = []
+    
+    # Process cache keys in batches
+    for i in range(0, len(cache_keys), GET_BATCH_SIZE):
+        batch_keys = cache_keys[i:i + GET_BATCH_SIZE]
+        batch_conversations = conversations[i:i + GET_BATCH_SIZE]
         
-    for conversation in conversations:
-        cache_key = get_cache_key(conversation['conversation'], model, generation_args)
-        if cache_key in cache:
-            cached_results.append({**conversation, "response": cache[cache_key]['response'], "error": None, "is_cached_response": True})
-            continue
-        uncached_conversations.append(conversation)
+        # Batch retrieve from cache
+        cached_responses = cache.get_many(batch_keys)
         
+        # Process batch results
+        for conversation, cache_key in zip(batch_conversations, batch_keys):
+            cached_response = cached_responses[cache_key]
+            if cached_response:
+                cached_results.append({
+                    **conversation,
+                    "response": cached_response['response'],
+                    "error": None,
+                    "is_cached_response": True
+                })
+            else:
+                uncached_conversations.append(conversation)
+        
+        if i + GET_BATCH_SIZE < len(cache_keys):
+            logger.info(f"Processed {i + GET_BATCH_SIZE}/{len(cache_keys)} cache lookups")
+    
     logger.info(f"Cache hits: {len(cached_results)}, Uncached requests: {len(uncached_conversations)}")
-        
     return cache, cached_results, uncached_conversations
 
-
 def update_cache(uncached_results, cache, model, generation_args, cache_file):
-    # logger.info("Updating cache with new results")
-    for result in uncached_results:
-        if result['error'] is None:
-            cache_key = get_cache_key(result['conversation'], model, generation_args)
-            cache[cache_key] = {
-                "model": model,
-                "generation_args": generation_args,
-                'conversation': result['conversation'],
-                'response': result['response']
-            }
-    save_cache(cache, cache_file)
-    logger.info(f"Cache updated and saved to {cache_file}")
+    # Collect all successful results
+    all_updates = {
+        get_cache_key(result['conversation'], model, generation_args): {
+            "model": model,
+            "generation_args": generation_args,
+            'conversation': result['conversation'],
+            'response': result['response']
+        }
+        for result in uncached_results
+        if result['error'] is None
+    }
+    
+    # Process updates in batches
+    update_items = list(all_updates.items())
+    total_updates = len(update_items)
+    
+    for i in range(0, total_updates, SET_BATCH_SIZE):
+        batch_items = dict(update_items[i:i + SET_BATCH_SIZE])
+        if batch_items:
+            cache.set_many(batch_items)
+            logger.info(f"Cache updated with batch of {len(batch_items)} entries ({i + len(batch_items)}/{total_updates})")
+
+    if total_updates > 0:
+        logger.info(f"Completed cache update with total {total_updates} new entries")
 
 # Example usage
 if __name__ == "__main__":
