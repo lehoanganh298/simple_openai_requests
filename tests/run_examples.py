@@ -48,7 +48,7 @@ def run_example_2():
         model="gpt-4o-mini",
         use_batch=True,
         use_cache=False,
-        check_status_interval=10,
+        status_check_interval=10,
         generation_args={"max_tokens": 150}
     )
 
@@ -78,7 +78,7 @@ def run_example_3():
         conversations=conversations,
         model="gpt-4o-mini",
         use_batch=False,
-        use_cache=False,
+        use_cache=True,
         max_workers=2
     )
 
@@ -87,6 +87,6 @@ def run_example_3():
 if __name__ == "__main__":
     # run_example_1()
     # print("\n" + "=" * 70 + "\n")
-    run_example_2()
+    # run_example_2()
     # print("\n" + "=" * 70 + "\n")
-    # run_example_3()
+    run_example_3()
